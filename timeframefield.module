@@ -1,0 +1,259 @@
+<?php
+
+function timeframefield_field_info() {
+	return array('timeframefield' => array (
+		'label' => t('Time Frame Field'),
+		'description' => t('Stores Time Frame within a date range'),
+		'content_icon' => 'icon_content_text.png'
+	)) ;
+}
+
+function timeframefield_field_settings($op, $field) {
+	switch ($op) {
+		case 'database columns':
+			return array (
+				'start_day' => array(
+						'type' => 'varchar', 'length' => 3, 
+						'not null' => FALSE, 'sortable' => FALSE,
+						'views' => FALSE
+						),
+				'end_day' => array(
+						'type' => 'varchar', 'length' => 3, 
+						'not null' => FALSE, 'sortable' => FALSE,
+						'views' => FALSE
+						),
+				'start_time' => array(
+						'type' => 'datetime', 'not null' => FALSE,
+						'sortable' => TRUE, 'views' => FALSE,
+						'default' => '00:00:00'
+						),
+				'end_time' => array(
+						'type' => 'datetime', 'not null' => FALSE,
+						'sortable' => TRUE, 'views' => FALSE,
+						'default' => '00:00:00'
+						)
+			) ;
+		break ;
+	}
+}
+
+function timeframefield_field ($op, &$node, $field, &$items, $teaser, $page) {
+	switch ($op) {
+		case 'validate':
+			if (is_array($items)) {
+				$timePattern = '/\d{2}:\d{2} [a|p]m/' ;
+				foreach($items as $key => $item) {
+					if (!timeframefield_content_is_empty($item, $field)) {
+						$error_element = isset($item['_error_element']) ? $item['_error_element'] : '' ;
+						if (!preg_match($timePattern, $items[$key]['start_time'])) {
+							form_set_error($error_element, t('"%value" is not a valid time value', array('%value' => t($item['start_time'])))) ;
+						}
+						if (!preg_match($timePattern, $items[$key]['end_time'])) {
+							form_set_error($error_element, t('"%value" is not a valid time value', array('%value' => t($item['end_time'])))) ;
+						}
+					}
+				}
+			}
+			break ;
+			
+		case 'sanitize':
+			break ;
+
+		case 'insert':
+		case 'update':
+			if (is_array($items)) {
+				foreach($items as $key => $item) {
+					$items[$key]['start_time'] = date('Y-m-d H:i:s', strtotime($item['start_time'])) ;
+					$items[$key]['end_time'] = date('Y-m-d H:i:s', strtotime($item['end_time'])) ;
+				}
+			}
+			break ;
+	}
+}
+
+
+function timeframefield_theme() {
+	return array (
+		'timeframefield_widget' => array(
+		  'arguments' => array('element' => NULL),
+		),
+		'timeframefield_formatter_default' => array(
+		  'arguments' => array('element' => NULL),
+		)
+	) ;
+}
+
+function timeframefield_field_formatter_info() {
+	return array (
+		'default' => array(
+			'label' => t('Default'),
+			'field types' => array('timeframefield','timeframefield_widget'),
+			//'multiple values' =>  CONTENT_HANDLE_CORE
+		)
+	) ;
+}
+
+function theme_timeframefield_formatter_default ($element = NULL) {
+	if (empty($element['#item'])) {
+		return '' ;
+	}
+	
+	$startDay = date('l', strtotime($element['#item']['start_day'])) ;
+	$startTime = date('h:i a', strtotime($element['#item']['start_time'])) ;
+	$endTime = date('h:i a', strtotime($element['#item']['end_time'])) ;
+
+	$output = '<div class="timeframefield_outer">' .
+		'<span class="timeframefield_sDay">' . $startDay . '</span>' ;
+	
+	if ($element['#item']['end_day'] != 'NaN') {
+		$endDay = date('l', strtotime($element['#item']['end_day'])) ;
+		$output .= '&nbsp;-&nbsp;<span class="timeframefield_eDay">' . $endDay . '</span>' ;
+	}
+
+	$output .= '<span class="timeframefield_sTime">' . $startTime . '</span>' .
+		'<span class="timeframefield_eTime">' . $endTime . '</span>' .
+		'</div>' ;
+
+	return $output ;
+}
+
+
+function timeframefield_widget_info() {
+	return array(
+		'timeframefield_widget' => array(
+			'label' => 'Time Frame Widget',
+			'field types' => array('timeframefield'),
+			'multiple values' =>  CONTENT_HANDLE_CORE,
+			'default value' => CONTENT_CALLBACK_NONE
+		)
+	) ;
+}
+
+function timeframefield_elements() {
+	$elements = array() ;
+	$elements['timeframefield_widget'] = array(
+		'#input' => TRUE,
+		'#process' => array('timeframefield_process') 
+	) ;
+	return $elements ;
+}
+/*
+function timeframefield_process($element, $edit, &$form_state, $form) {
+
+	$element['start_day'] = array(
+		'#type' => 'select',
+		'#title' => t('Select Start Day'),
+		'#required' => TRUE,
+		'#default_value' => isset($element['#value']['start_day']) ? $element['#value']['start_day'] : NULL,
+		'#options' => array(
+			'Mon' => t('Monday'),
+			'Tue' => t('Tuesday'),
+			'Wed' => t('Wednesday'),
+			'Thu' => t('Thursday'),
+			'Fri' => t('Friday'),
+			'Sat' => t('Saturday'),
+			'Sun' => t('Sunday')
+		) 
+	) ;
+
+	$element['end_day'] = array(
+		'#type' => 'select',
+		'#title' => t('Select End Day'),
+		'#required' => FALSE,
+		'#default_value' => isset($element['#value']['end_day']) ? $element['#value']['end_day'] : NULL,
+		'#options' => array(
+			'Mon' => t('Monday'),
+			'Tue' => t('Tuesday'),
+			'Wed' => t('Wednesday'),
+			'Thu' => t('Thursday'),
+			'Fri' => t('Friday'),
+			'Sat' => t('Saturday'),
+			'Sun' => t('Sunday')
+		) 
+	) ;
+
+	$element['start_time'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Enter Start Time'),
+		'#required' => TRUE,
+		'#maxlength' => '7',
+		'#default_value' => isset($element['#value']['start_time']) ? $element['#value']['start_time'] : NULL
+	) ;
+
+	$element['end_time'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Enter Start Time'),
+		'#required' => TRUE,
+		'#maxlength' => '7',
+		'#default_value' => isset($element['#value']['end_time']) ? $element['#value']['end_time'] : NULL
+	) ;
+
+	return $element ;
+}
+*/
+function theme_timeframefield(&$element) {
+	return theme( 'form_element', $element, $element['#children']) ;
+}
+
+function timeframefield_widget(&$form, &$form_state, $field, $items, $delta = 0) {
+	
+	$element['start_day'] = array(
+		'#type' => 'select',
+		'#title' => t('Start Day'),
+		//'#required' => TRUE,
+		'#default_value' => isset($items[$delta]['start_day']) ? $items[$delta]['start_day'] : NULL,
+		'#options' => array(
+			'Mon' => t('Monday'),
+			'Tue' => t('Tuesday'),
+			'Wed' => t('Wednesday'),
+			'Thu' => t('Thursday'),
+			'Fri' => t('Friday'),
+			'Sat' => t('Saturday'),
+			'Sun' => t('Sunday')
+		) 
+	) ;
+
+	$element['end_day'] = array(
+		'#type' => 'select',
+		'#title' => t('End Day'),
+		//'#required' => FALSE,
+		'#default_value' => isset($items[$delta]['end_day']) ? $items[$delta]['end_day'] : NULL,
+		'#options' => array(
+			'NaN' => t('N/A'),
+			'Mon' => t('Monday'),
+			'Tue' => t('Tuesday'),
+			'Wed' => t('Wednesday'),
+			'Thu' => t('Thursday'),
+			'Fri' => t('Friday'),
+			'Sat' => t('Saturday'),
+			'Sun' => t('Sunday')
+		) 
+	) ;
+
+	$element['start_time'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Start Time'),
+		//'#required' => TRUE,
+		'#maxlength' => '8',
+		'#size' => 10,
+		'#default_value' => isset($items[$delta]['start_time']) ? date('h:i a', strtotime($items[$delta]['start_time'])) : NULL
+	) ;
+
+	$element['end_time'] = array(
+		'#type' => 'textfield',
+		'#title' => t('End Time'),
+		//'#required' => TRUE,
+		'#maxlength' => '8',
+		'#size' => 10,
+		'#default_value' => isset($items[$delta]['end_time']) ? date('h:i a', strtotime($items[$delta]['end_time'])) : NULL
+	) ;
+
+	return $element ;
+}
+
+function timeframefield_content_is_empty($item, $field) {
+	if (empty($item['start_time']) || empty($item['end_time']))
+		return TRUE ;
+	return FALSE ;
+}
+

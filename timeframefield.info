@@ -1,0 +1,6 @@
+
+name = Time Frame Field for CCK
+description = Defines a time frame field for CCK
+dependencies[] = content
+package = UNB Library Hours Management
+core = 6.x

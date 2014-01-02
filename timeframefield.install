@@ -1,0 +1,21 @@
+<?php
+
+function timeframefield_install () {
+	drupal_load('module', 'content') ;
+	content_notify('install', 'timeframefield') ;
+}
+
+function timeframefield_uninstall () {
+	drupal_load('module', 'content') ;
+	content_notify('uninstall', 'timeframefield') ;
+}
+
+function timeframefield_enable () {
+	drupal_load('module', 'content') ;
+	content_notify('enable', 'timeframefield') ;
+}
+
+function timeframefield_disable () {
+	drupal_load('module', 'content') ;
+	content_notify('disable', 'timeframefield') ;
+}
